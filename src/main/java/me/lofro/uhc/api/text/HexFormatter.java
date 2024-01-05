@@ -20,7 +20,7 @@ public class HexFormatter {
         return hexFormat(deserialize(text));
     }
 
-    public static Component hexFormat(String text) { //TODO MAKE DECORATION COMBINATIONS WORK.
+    public static Component hexFormat(String text) { //TODO MAKE DECORATION COMBINATIONS WORK AND MAKE A LEGACY SUPPORT.
         String newText = text;
 
         Matcher chatColorMatcher = Pattern.compile("&[0-9a-f]").matcher(newText);

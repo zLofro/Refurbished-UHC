@@ -86,17 +86,15 @@ public class GameManager implements Restorable {
             var newChapterTime = (chapter != 1) ? (((newTime / 1500F) + 1) - chapter) * 1500 : newTime;
 
             if (chapter > getChapter(gameData.getTime())) {
-                Bukkit.broadcast(ChatColorFormatter.componentWithPrefix("&7Ha dado comienzo el episodio " + chapter + "."));
+                Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&7Ha dado comienzo el episodio " + chapter + ".")));
                 switch (chapter) {
-                    case 9 -> {
-                        Bukkit.broadcast(ChatColorFormatter.componentWithPrefix("&a¡Todos los jugadores han obtenido mejoras!"));
-                        Bukkit.getOnlinePlayers().forEach(player -> {
-                            var maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-                            if (maxHealth != null) maxHealth.setBaseValue(maxHealth.getBaseValue() + 20);
+                    case 9 -> Bukkit.getOnlinePlayers().forEach(player -> {
+                        player.sendMessage(ChatColorFormatter.stringWithPrefix("&a¡Todos los jugadores han obtenido mejoras!"));
+                        var maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+                        if (maxHealth != null) maxHealth.setBaseValue(maxHealth.getBaseValue() + 20);
 
-                            InfinitePotionEffect.create(player, PotionEffectType.DAMAGE_RESISTANCE, 0);
-                        });
-                    }
+                        InfinitePotionEffect.create(player, PotionEffectType.DAMAGE_RESISTANCE, 0);
+                    });
                     case 4 -> Bukkit.broadcast(ChatColorFormatter.componentWithPrefix("&cSe ha activado el PVP."));
                 }
             }

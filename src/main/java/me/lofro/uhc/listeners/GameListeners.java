@@ -7,12 +7,13 @@ import me.lofro.uhc.api.item.ItemBuilder;
 import me.lofro.uhc.api.text.ChatColorFormatter;
 import me.lofro.uhc.api.text.HexFormatter;
 import me.lofro.uhc.data.Team;
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.*;
+import org.bukkit.craftbukkit.v1_19_R3.advancement.CraftAdvancement;
+import org.bukkit.craftbukkit.v1_19_R3.entity.CraftPlayer;
 import org.bukkit.entity.Ghast;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -132,20 +133,20 @@ public class GameListeners implements Listener {
             if (playerTeam.getMembers().isEmpty()) {
                 gameManager.getGameData().getTeams().remove(playerTeam);
                 if (teamName != null) {
-                    Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormatWithPrefix("&cEl jugador " + player.getName() + " del team " + teamName +" &cha muerto. Su team ha sido eliminado.")));
+                    Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&cEl jugador " + player.getName() + " del team " + teamName +" &cha muerto. Su team ha sido eliminado.")));
                 } else {
-                    Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormatWithPrefix("&cEl jugador " + player.getName() + " ha muerto. Su team ha sido eliminado.")));
+                    Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&cEl jugador " + player.getName() + " ha muerto. Su team ha sido eliminado.")));
                 }
                 return;
             } else {
                 if (teamName != null) {
-                    Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormatWithPrefix("&cEl jugador " + player.getName() + " del team " + teamName +" &cha muerto.")));
+                    Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&cEl jugador " + player.getName() + " del team " + teamName +" &cha muerto.")));
                     return;
                 }
             }
         }
 
-        Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormatWithPrefix("&cEl jugador " + player.getName() + " ha muerto.")));
+        Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&cEl jugador " + player.getName() + " ha muerto.")));
     }
 
     @EventHandler
@@ -276,6 +277,21 @@ public class GameListeners implements Listener {
                 }
             });
         }
+    }
+
+    @EventHandler
+    private void onPlayerAdvancement(PlayerAdvancementDoneEvent event) {
+        var advancement = ((CraftAdvancement)event.getAdvancement()).getHandle();
+
+        boolean announceToChat = advancement.getDisplay() != null && advancement.getDisplay().shouldAnnounceChat();
+
+        var serverPlayer = ((CraftPlayer)event.getPlayer()).getHandle();
+        var displayName = serverPlayer.getDisplayName();
+        var modifiedDisplayName = displayName.plainCopy().setStyle(displayName.getStyle().withObfuscated(true));
+
+        net.kyori.adventure.text.Component message = announceToChat ? io.papermc.paper.adventure.PaperAdventure.asAdventure(net.minecraft.network.chat.Component.translatable("chat.type.advancement." + advancement.getDisplay().getFrame().getName(), modifiedDisplayName, advancement.getChatComponent())) : null;
+
+        event.message(message);
     }
 
     @EventHandler
