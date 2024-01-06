@@ -34,7 +34,7 @@ public class StaffCommand extends BaseCommand {
         }
     }
 
-    @Subcommand("removeTeamByName")
+    @Subcommand("removeTeam")
     @CommandCompletion("teamName")
     private void removeTeam(CommandSender sender, String teamName) {
         if (sender instanceof Player) {
