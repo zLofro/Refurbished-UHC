@@ -78,11 +78,11 @@ tasks {
 }
 
 bukkit {
-    name = "Reburbished-UHC"
+    name = "Refurbished-UHC"
     version = "1.0"
     apiVersion = "1.19"
     main = "me.lofro.uhc.UHC"
     author = "Lofro"
-    depend = listOf("TAB")
+    depend = listOf("TAB", "ProtocolLib")
     website = "https://github.com/zLofro"
 }

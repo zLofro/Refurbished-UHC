@@ -1,10 +1,7 @@
 package me.lofro.uhc.commands;
 
 import co.aikar.commands.BaseCommand;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandCompletion;
-import co.aikar.commands.annotation.Flags;
-import co.aikar.commands.annotation.Subcommand;
+import co.aikar.commands.annotation.*;
 import me.lofro.uhc.UHC;
 import me.lofro.uhc.api.text.ChatColorFormatter;
 import me.lofro.uhc.data.Team;
@@ -15,8 +12,8 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
+@CommandPermission("admin.perm")
 @CommandAlias("uhcStaff")
 public class StaffCommand extends BaseCommand {
 

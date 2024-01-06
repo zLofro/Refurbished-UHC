@@ -14,4 +14,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "Reburbished-UHC"
+rootProject.name = "Refurbished-UHC"
