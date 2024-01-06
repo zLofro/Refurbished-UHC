@@ -7,6 +7,7 @@ import me.lofro.uhc.api.ListenerUtils;
 import me.lofro.uhc.api.data.JsonConfig;
 import me.lofro.uhc.api.data.interfaces.Restorable;
 import me.lofro.uhc.api.infinitepotion.InfinitePotionEffect;
+import me.lofro.uhc.api.item.ItemBuilder;
 import me.lofro.uhc.api.text.ChatColorFormatter;
 import me.lofro.uhc.api.text.HexFormatter;
 import me.lofro.uhc.api.timer.GameTimer;
@@ -17,17 +18,20 @@ import me.lofro.uhc.listeners.GameListeners;
 import me.neznamy.tab.api.TabAPI;
 import me.neznamy.tab.api.tablist.HeaderFooterManager;
 import me.neznamy.tab.api.tablist.TabListFormatManager;
-import org.bukkit.Bukkit;
+import net.kyori.adventure.title.Title;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scoreboard.*;
 
+import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class GameManager implements Restorable {
@@ -44,8 +48,6 @@ public class GameManager implements Restorable {
 
     private int taskID;
 
-    private @Getter boolean isInGame = false;
-
     private final List<Score> scores;
 
     private final TabListFormatManager tablistFormatManager = UHC.getTabAPI().getTabListFormatManager();
@@ -60,46 +62,78 @@ public class GameManager implements Restorable {
         this.objective.setDisplaySlot(DisplaySlot.SIDEBAR);
 
         this.scores = new ArrayList<>();
+
+        this.restore(UHC.getInstance().getDataManager().getGameDataJson());
     }
 
     public void startGame() {
-        this.isInGame = true;
-        UHC.getInstance().getDataManager().restore();
+        if (!gameData.isInGame()) {
+            teleportToRandomLocations();
+            Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&aHa dado comienzo la partida.")));
+        }
+
+        this.gameData.setInGame(true);
+
+        var isOnLastSize = Bukkit.getWorlds().get(0).getWorldBorder().getSize() <= 400;
+
+        if (!isOnLastSize) Bukkit.getWorlds().get(0).getWorldBorder().setSize(4001);
+        if (getChapter(gameData.getTime()) >= 9 && !isOnLastSize) {
+            Bukkit.getWorlds().get(0).getWorldBorder().setSize(400, TimeUnit.MINUTES, 10);
+            Bukkit.getOnlinePlayers().forEach(player -> player.sendMessage(ChatColorFormatter.stringWithPrefix("&cEl borde se cierra. Tienen 5 minutos para llegar a 200x200.")));
+        }
 
         ListenerUtils.registerListener(gameListener);
         CommandUtils.registerCommands(uhc.getPaperCommandManager(), new TeamCommand());
 
         Bukkit.getOnlinePlayers().forEach(player -> {
             showScoreboard(player);
-            if (getChapter(gameData.getTime()) >= 9) {
-                InfinitePotionEffect.create(player, PotionEffectType.DAMAGE_RESISTANCE, 0);
-                var maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-                if (maxHealth != null) maxHealth.setBaseValue(maxHealth.getBaseValue() + 20);
-            }
+            resetEffects(player, true);
         });
 
         this.taskID = Bukkit.getScheduler().runTaskTimer(uhc, () -> {
             this.scores.forEach(score -> scoreboard.resetScores(score.getEntry()));
 
             var newTime = gameData.getTime() + 1;
+
+            gameData.setTime(newTime);
+
             var chapter = getChapter(newTime);
             var newChapterTime = (chapter != 1) ? (((newTime / 1500F) + 1) - chapter) * 1500 : newTime;
 
-            if (chapter > getChapter(gameData.getTime())) {
+            if (chapter > getChapter(gameData.getTime() - 1)) {
                 Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&7Ha dado comienzo el episodio " + chapter + ".")));
                 switch (chapter) {
-                    case 9 -> Bukkit.getOnlinePlayers().forEach(player -> {
-                        player.sendMessage(ChatColorFormatter.stringWithPrefix("&a¡Todos los jugadores han obtenido mejoras!"));
-                        var maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-                        if (maxHealth != null) maxHealth.setBaseValue(maxHealth.getBaseValue() + 20);
+                    case 9 -> {
+                        Bukkit.getOnlinePlayers().forEach(player -> {
+                            player.sendMessage(ChatColorFormatter.stringWithPrefix("&a¡Todos los jugadores han obtenido mejoras!"));
 
-                        InfinitePotionEffect.create(player, PotionEffectType.DAMAGE_RESISTANCE, 0);
+                            resetEffects(player, true);
+
+                            player.sendMessage(ChatColorFormatter.stringWithPrefix("&cEl borde se cierra. Tienen 5 minutos para llegar a 200x200."));
+                        });
+                        if (!(Bukkit.getWorlds().get(0).getWorldBorder().getSize() <= 400)) Bukkit.getWorlds().get(0).getWorldBorder().setSize(400, TimeUnit.MINUTES, 10);
+                    }
+                    case 4 -> Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&cSe ha activado el PVP.")));
+                    case 3 -> Bukkit.getOnlinePlayers().forEach(online -> {
+                        online.sendMessage(ChatColorFormatter.stringWithPrefix("&a¡Se ha dado una brújula que localiza al jugador más cercano a todos los jugadores!"));
+                        var compass = new ItemBuilder(Material.COMPASS).setID("player_finder").setDisplayName(HexFormatter.hexFormat("#55FF55Brujula de jugadores."));
+
+                        online.getInventory().addItem(compass.build());
                     });
-                    case 4 -> Bukkit.broadcast(ChatColorFormatter.componentWithPrefix("&cSe ha activado el PVP."));
+                    case 10 -> Bukkit.getOnlinePlayers().forEach(player -> {
+                        var aliveTeams = gameData.getTeams();
+                        if (!aliveTeams.isEmpty()) {
+                            StringBuilder text = new StringBuilder("&a¡Los equipos ");
+                            aliveTeams.forEach(team -> text.append(team.getName()).append(" "));
+                            text.append("&ahan quedado en empate!");
+                            player.sendMessage(ChatColorFormatter.stringWithPrefix(text.toString()));
+                            player.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55¡Empate!"), HexFormatter.hexFormat("")));
+                            player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1, 1);
+                            endGame();
+                        }
+                    });
                 }
             }
-
-            gameData.setTime(newTime);
 
             var separatorScore0 = objective.getScore("       ");
             var chapterScoreTitle = objective.getScore(ChatColorFormatter.string("&a✰ Episodio: &r" + chapter));
@@ -124,16 +158,21 @@ public class GameManager implements Restorable {
             scores.add(totalTimeScore);
 
             String topper = formatString("#FFFFFF                  #FFAA00Refurbished UHC #FFFFFF                 ", "");
-            String footer = formatString("", "#FFFFFF     #FFAA00☀ #E8B465Capitulo actual: #EDC588" + chapter);
+            String footer = formatString("", "#FFFFFF  #FFAA00☀ #E8B465Episodio actual: #EDC588" + chapter);
 
             Bukkit.getOnlinePlayers().forEach(online -> {
+                var nearestPlayer = getNearestPlayer(online, 5000D);
+                if (nearestPlayer != null) {
+                    online.setCompassTarget(nearestPlayer.getLocation());
+                }
+
                 var tabPlayer = TabAPI.getInstance().getPlayer(online.getUniqueId());
                 if (!(tabPlayer != null && headerFooterManager != null && tablistFormatManager != null)) return;
                 headerFooterManager.setHeader(tabPlayer, topper);
                 headerFooterManager.setFooter(tabPlayer, footer);
 
                 var absorption = online.getPotionEffect(PotionEffectType.ABSORPTION);
-                var health = absorption != null ? (int)(online.getHealth() + absorption.getAmplifier() + 4) : (int)online.getHealth();
+                var health = absorption != null ? (int)(online.getHealth() + absorption.getAmplifier() + 4) / 2 : (int)online.getHealth() / 2;
                 tablistFormatManager.setSuffix(tabPlayer, " " + getHealthColor(health) + health + "#EF2A2A❤");
 
                 var teamList = getTeam(online.getUniqueId());
@@ -141,31 +180,29 @@ public class GameManager implements Restorable {
                 if (teamList != null && !teamList.isEmpty()) {
                     var team = teamList.get(0);
 
-                    Bukkit.getOnlinePlayers().forEach(all -> {
-                        var teamMembers = team.getMembers();
-                        if (teamMembers.isEmpty()) return;
-                        if (!teamMembers.contains(all.getUniqueId())) {
-                            //modifyDisplayName(online, all, ChatColorFormatter.string("&c" + all.getName()));
-                        } else {
-                            //modifyDisplayName(online, all, ChatColorFormatter.string("&a" + all.getName()));
-                        }
-                    });
+                    StringBuilder text = new StringBuilder("&aTeam: " + team.getName() + "&a. Miembros: ");
+
+                    if (!team.getMembers().isEmpty()) {
+                        team.getMembers().forEach(member -> {
+                            var player = Bukkit.getPlayer(member);
+                            if (player != null) text.append(player.getName()).append(" ");
+                        });
+                    }
+
+                    online.sendActionBar(ChatColorFormatter.string(text.toString()));
                 }
             });
 
         }, 0, 20).getTaskId();
     }
 
-    public void stopGame() {
-        this.isInGame = false;
+    public void stopGame(boolean isInGame) {
+        if (!isInGame) this.gameData.setInGame(false);
         Bukkit.getScheduler().cancelTask(this.taskID);
 
         Bukkit.getOnlinePlayers().forEach(player -> {
             hideScoreBoard(player);
-            if (getChapter(gameData.getTime()) >= 9) InfinitePotionEffect.remove(player, PotionEffectType.DAMAGE_RESISTANCE);
-
-            var maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-            if (maxHealth != null) maxHealth.setBaseValue(20);
+            resetEffects(player, false);
         });
 
         ListenerUtils.unregisterListener(gameListener);
@@ -174,15 +211,12 @@ public class GameManager implements Restorable {
     }
 
     public void endGame() {
-        this.isInGame = false;
+        this.gameData.setInGame(false);
         Bukkit.getScheduler().cancelTask(this.taskID);
 
         Bukkit.getOnlinePlayers().forEach(player -> {
             hideScoreBoard(player);
-            if (getChapter(gameData.getTime()) >= 9) InfinitePotionEffect.remove(player, PotionEffectType.DAMAGE_RESISTANCE);
-
-            var maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-            if (maxHealth != null) maxHealth.setBaseValue(20);
+            resetEffects(player, false);
         });
 
         gameData.setTime(0);
@@ -262,4 +296,67 @@ public class GameManager implements Restorable {
         }
         return "#F05555";
     }
+
+    private @Nullable Player getNearestPlayer(Player p, Double range) {
+        double maxDistance = Double.POSITIVE_INFINITY;
+        Player target = null;
+        for (Entity e : p.getNearbyEntities(range, range, range)) {
+            if (!(e instanceof Player))
+                continue;
+            if(e == p) continue;
+            double distanceTo = p.getLocation().distance(e.getLocation());
+            if (distanceTo > maxDistance)
+                continue;
+            maxDistance = distanceTo;
+            target = (Player) e;
+        }
+        return target;
+    }
+
+    public void resetEffects(Player player, boolean isInGame) {
+        if (isInGame) {
+            if (getChapter(gameData.getTime()) >= 9) {
+                InfinitePotionEffect.create(player, PotionEffectType.DAMAGE_RESISTANCE, 0);
+
+                var maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+                if (maxHealth != null) maxHealth.setBaseValue(40);
+            } else {
+                InfinitePotionEffect.remove(player, PotionEffectType.DAMAGE_RESISTANCE);
+                var maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+                if (maxHealth != null) maxHealth.setBaseValue(20);
+            }
+        } else {
+            InfinitePotionEffect.remove(player, PotionEffectType.DAMAGE_RESISTANCE);
+            var maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+            if (maxHealth != null) maxHealth.setBaseValue(20);
+        }
+    }
+
+    private void teleportToRandomLocations() {
+        List<Location> teleportLocations = new ArrayList<>();
+        var world = Bukkit.getWorlds().get(0);
+        teleportLocations.add(new Location(world, -2000, world.getHighestBlockAt(-2000, 2000).getY() + 1, 2000));
+        teleportLocations.add(new Location(world, -667, world.getHighestBlockAt(-667, 2000).getY() + 1, 2000));
+        teleportLocations.add(new Location(world, 667, world.getHighestBlockAt(667, 2000).getY() + 1, 2000));
+        teleportLocations.add(new Location(world, 2000, world.getHighestBlockAt(2000, 2000).getY() + 1, 2000));
+        teleportLocations.add(new Location(world, -2000, world.getHighestBlockAt(-2000, 667).getY() + 1, 667));
+        teleportLocations.add(new Location(world, -2000, world.getHighestBlockAt(-2000, -667).getY() + 1, -667));
+        teleportLocations.add(new Location(world, -2000, world.getHighestBlockAt(-2000, -2000).getY() + 1, -2000));
+        teleportLocations.add(new Location(world, -667, world.getHighestBlockAt(-667, -2000).getY() + 1, -2000));
+        teleportLocations.add(new Location(world, 667, world.getHighestBlockAt(667, -2000).getY() + 1, 2000));
+        teleportLocations.add(new Location(world, 2000, world.getHighestBlockAt(2000, -2000).getY() + 1, -2000));
+        teleportLocations.add(new Location(world, 2000, world.getHighestBlockAt(2000, -667).getY() + 1, -667));
+        teleportLocations.add(new Location(world, 2000, world.getHighestBlockAt(2000, 667).getY() + 1, 667));
+
+        var survivalPlayers = Bukkit.getOnlinePlayers().stream().filter(player -> player.getGameMode().equals(GameMode.SURVIVAL)).toList();
+
+        for (int i = 0; i < survivalPlayers.size(); i++) {
+            var player = survivalPlayers.get(i);
+
+            if (survivalPlayers.size() > teleportLocations.size()) continue;
+
+            player.teleport(teleportLocations.get(i));
+        }
+    }
+
 }

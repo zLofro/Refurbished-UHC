@@ -45,17 +45,9 @@ public class UHC extends JavaPlugin {
 
         this.protocolManager = ProtocolLibrary.getProtocolManager();
 
-        try {
-            this.dataManager = new DataManager(this);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
         ListenerUtils.registerListener(new InfinitePotionEffectListener());
 
         this.paperCommandManager = new PaperCommandManager(this);
-
-        this.gameManager = new GameManager(this, new GameListeners());
 
         CommandUtils.registerCommands(paperCommandManager, new StaffCommand());
 
@@ -64,12 +56,20 @@ public class UHC extends JavaPlugin {
 
         RecipesManager.createCustomRecipes();
 
-        gameManager.startGame();
+        try {
+            this.dataManager = new DataManager(this);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        this.gameManager = new GameManager(this, new GameListeners());
+
+        if (gameManager.getGameData().isInGame()) gameManager.startGame();
     }
 
     @Override
     public void onDisable() {
-        this.gameManager.stopGame();
+        this.gameManager.stopGame(gameManager.getGameData().isInGame());
     }
 
 }

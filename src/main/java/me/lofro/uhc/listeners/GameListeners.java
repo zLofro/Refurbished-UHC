@@ -7,9 +7,11 @@ import me.lofro.uhc.api.item.ItemBuilder;
 import me.lofro.uhc.api.text.ChatColorFormatter;
 import me.lofro.uhc.api.text.HexFormatter;
 import me.lofro.uhc.data.Team;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.*;
 import org.bukkit.craftbukkit.v1_19_R3.advancement.CraftAdvancement;
@@ -147,20 +149,32 @@ public class GameListeners implements Listener {
         }
 
         Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&cEl jugador " + player.getName() + " ha muerto.")));
+
+        var alivePlayers = Bukkit.getOnlinePlayers().stream().filter(online -> online.getGameMode().equals(GameMode.SURVIVAL)).toList();
+        if (alivePlayers.size() == 1) {
+            var winnerTeamList = gameManager.getTeam(alivePlayers.get(0).getUniqueId());
+
+            if (!winnerTeamList.isEmpty()) {
+                var winnerTeam = winnerTeamList.get(0);
+                var winnerTeamName = winnerTeam.getName();
+                if (winnerTeamName != null) {
+                    Bukkit.getOnlinePlayers().forEach(online -> {
+                        player.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55¡Ganador!"), HexFormatter.hexFormat("#FFFF55Team " + winnerTeamName + "#FFFF55.")));
+                        player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1, 1);
+                        gameManager.endGame();
+                    });
+                }
+            }
+        }
     }
 
     @EventHandler
     private void onPlayerJoin(PlayerJoinEvent event) {
         var player = event.getPlayer();
         var gameManager = UHC.getInstance().getGameManager();
-        if (gameManager.isInGame()) {
+        if (gameManager.getGameData().isInGame()) {
             gameManager.showScoreboard(player);
-            if (gameManager.getChapter(gameManager.getGameData().getTime()) >= 9) {
-                InfinitePotionEffect.create(player, PotionEffectType.DAMAGE_RESISTANCE, 0);
-
-                var maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-                if (maxHealth != null) maxHealth.setBaseValue(maxHealth.getBaseValue() + 20);
-            }
+            gameManager.resetEffects(player, true);
         }
     }
 
@@ -173,7 +187,7 @@ public class GameListeners implements Listener {
         var messageString = HexFormatter.deserialize(event.message());
 
         if ((messageString.charAt(0) == '!') || teamList.isEmpty()) {
-            var realMessageString = messageString.substring(1);
+            var realMessageString = (!teamList.isEmpty()) ? messageString.substring(1) : messageString;
             Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormat("#FF5555[GLOBAL] #AAAAAA" + player.getName() + " #FFFFFF>> " + realMessageString)));
             event.setCancelled(true);
         } else {
@@ -193,7 +207,7 @@ public class GameListeners implements Listener {
         if (!(event.hasChangedPosition() || event.hasChangedBlock()) || !player.getGameMode().equals(GameMode.SURVIVAL) || player.isDead()) return;
         var gameManager = UHC.getInstance().getGameManager();
 
-        if (gameManager.isInGame()) {
+        if (gameManager.getGameData().isInGame()) {
             var playersNearby = player.getNearbyEntities(40, 40, 40);
 
             playersNearby = playersNearby.stream().filter(entity -> entity instanceof Player p && p.getGameMode().equals(GameMode.SURVIVAL) && !p.isDead()).collect(Collectors.toList());
@@ -298,7 +312,7 @@ public class GameListeners implements Listener {
     private void onPlayerLeave(PlayerQuitEvent event) {
         var player = event.getPlayer();
         var gameManager = UHC.getInstance().getGameManager();
-        if (gameManager.isInGame()) {
+        if (gameManager.getGameData().isInGame()) {
             gameManager.hideScoreBoard(player);
             if (gameManager.getChapter(gameManager.getGameData().getTime()) >= 9) {
                 InfinitePotionEffect.remove(player, PotionEffectType.DAMAGE_RESISTANCE);
