@@ -10,7 +10,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-@CommandAlias("team")
+@CommandAlias("uhcTeam")
 public class TeamCommand extends BaseCommand {
 
     @Subcommand("rename")

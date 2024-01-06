@@ -3,8 +3,11 @@ package me.lofro.uhc.commands;
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
 import me.lofro.uhc.UHC;
+import me.lofro.uhc.api.ListenerUtils;
 import me.lofro.uhc.api.text.ChatColorFormatter;
+import me.lofro.uhc.api.text.HexFormatter;
 import me.lofro.uhc.data.Team;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -144,7 +147,15 @@ public class StaffCommand extends BaseCommand {
 
         sender.sendMessage(ChatColorFormatter.stringWithPrefix("&aHas iniciado la partida."));
 
-        gameManager.startGame();
+        Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55El UHC empieza en:"), HexFormatter.hexFormat("#FFFF555")))), 20);
+        Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55El UHC empieza en:"), HexFormatter.hexFormat("#FFFF554")))), 40);
+        Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55El UHC empieza en:"), HexFormatter.hexFormat("#FFFF553")))), 60);
+        Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55El UHC empieza en:"), HexFormatter.hexFormat("#FFFF552")))), 80);
+        Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55El UHC empieza en:"), HexFormatter.hexFormat("#FFFF551")))), 100);
+        Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> {
+            gameManager.startGame();
+            Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55¡El UHC ha empezado!"), HexFormatter.hexFormat(""))));
+        }, 120);
     }
 
     @Subcommand("stopGame")
@@ -173,6 +184,16 @@ public class StaffCommand extends BaseCommand {
         gameManager.endGame();
 
         sender.sendMessage(ChatColorFormatter.stringWithPrefix("&aHas reseteado la partida."));
+    }
+
+    @Subcommand("scatter")
+    private void scatter() {
+        var gameManager = UHC.getInstance().getGameManager();
+
+        gameManager.teleportToRandomLocations();
+        Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> gameManager.getGameData().setInScatter(true), 4);
+
+        Bukkit.getOnlinePlayers().forEach(player -> player.sendMessage(ChatColorFormatter.stringWithPrefix("&aSe ha teletransportado a todos los jugadores a una posición aleatoria.")));
     }
 
 }

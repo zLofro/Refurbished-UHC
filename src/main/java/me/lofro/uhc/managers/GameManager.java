@@ -2,7 +2,6 @@ package me.lofro.uhc.managers;
 
 import lombok.Getter;
 import me.lofro.uhc.UHC;
-import me.lofro.uhc.api.CommandUtils;
 import me.lofro.uhc.api.ListenerUtils;
 import me.lofro.uhc.api.data.JsonConfig;
 import me.lofro.uhc.api.data.interfaces.Restorable;
@@ -11,7 +10,6 @@ import me.lofro.uhc.api.item.ItemBuilder;
 import me.lofro.uhc.api.text.ChatColorFormatter;
 import me.lofro.uhc.api.text.HexFormatter;
 import me.lofro.uhc.api.timer.GameTimer;
-import me.lofro.uhc.commands.TeamCommand;
 import me.lofro.uhc.data.GameData;
 import me.lofro.uhc.data.Team;
 import me.lofro.uhc.listeners.GameListeners;
@@ -23,7 +21,6 @@ import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scoreboard.*;
 
@@ -38,7 +35,7 @@ public class GameManager implements Restorable {
 
     private final UHC uhc;
 
-    private final GameListeners gameListener;
+    private final @Getter GameListeners gameListener;
 
     private @Getter GameData gameData;
 
@@ -67,8 +64,8 @@ public class GameManager implements Restorable {
     }
 
     public void startGame() {
+        gameData.setInScatter(false);
         if (!gameData.isInGame()) {
-            teleportToRandomLocations();
             Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&aHa dado comienzo la partida.")));
         }
 
@@ -76,14 +73,13 @@ public class GameManager implements Restorable {
 
         var isOnLastSize = Bukkit.getWorlds().get(0).getWorldBorder().getSize() <= 400;
 
-        if (!isOnLastSize) Bukkit.getWorlds().get(0).getWorldBorder().setSize(4001);
+        if (!isOnLastSize) Bukkit.getWorlds().get(0).getWorldBorder().setSize(4002);
         if (getChapter(gameData.getTime()) >= 9 && !isOnLastSize) {
             Bukkit.getWorlds().get(0).getWorldBorder().setSize(400, TimeUnit.MINUTES, 10);
             Bukkit.getOnlinePlayers().forEach(player -> player.sendMessage(ChatColorFormatter.stringWithPrefix("&cEl borde se cierra. Tienen 5 minutos para llegar a 200x200.")));
         }
 
         ListenerUtils.registerListener(gameListener);
-        CommandUtils.registerCommands(uhc.getPaperCommandManager(), new TeamCommand());
 
         Bukkit.getOnlinePlayers().forEach(player -> {
             showScoreboard(player);
@@ -99,6 +95,15 @@ public class GameManager implements Restorable {
 
             var chapter = getChapter(newTime);
             var newChapterTime = (chapter != 1) ? (((newTime / 1500F) + 1) - chapter) * 1500 : newTime;
+
+            if ((double) (chapter + 1) == getUnRoundedChapter(gameData.getTime() + 6)) {
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55Cambio de episodio en:"), HexFormatter.hexFormat("#FFFF555")))), 20);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55Cambio de episodio en:"), HexFormatter.hexFormat("#FFFF554")))), 40);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55Cambio de episodio en:"), HexFormatter.hexFormat("#FFFF553")))), 60);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55Cambio de episodio en:"), HexFormatter.hexFormat("#FFFF552")))), 80);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55Cambio de episodio en:"), HexFormatter.hexFormat("#FFFF551")))), 100);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55¡Se cambió el episodio!"), HexFormatter.hexFormat("")))), 100);
+            }
 
             if (chapter > getChapter(gameData.getTime() - 1)) {
                 Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&7Ha dado comienzo el episodio " + chapter + ".")));
@@ -164,6 +169,8 @@ public class GameManager implements Restorable {
                 var nearestPlayer = getNearestPlayer(online, 5000D);
                 if (nearestPlayer != null) {
                     online.setCompassTarget(nearestPlayer.getLocation());
+                } else {
+                    online.setCompassTarget(online.getWorld().getSpawnLocation());
                 }
 
                 var tabPlayer = TabAPI.getInstance().getPlayer(online.getUniqueId());
@@ -258,8 +265,12 @@ public class GameManager implements Restorable {
         return GameTimer.getTimeString(t);
     }
 
+    public double getUnRoundedChapter(int time) {
+        return (time / 1500D) + 1;
+    }
+
     public int getChapter(int time) {
-        return BigDecimal.valueOf((time / 1500) + 1).setScale(1, RoundingMode.DOWN).intValue();
+        return BigDecimal.valueOf(getUnRoundedChapter(time)).setScale(1, RoundingMode.DOWN).intValue();
     }
 
     public List<Team> getTeam(UUID teamMember) {
@@ -300,15 +311,17 @@ public class GameManager implements Restorable {
     private @Nullable Player getNearestPlayer(Player p, Double range) {
         double maxDistance = Double.POSITIVE_INFINITY;
         Player target = null;
-        for (Entity e : p.getNearbyEntities(range, range, range)) {
-            if (!(e instanceof Player))
-                continue;
-            if(e == p) continue;
+        for (Player e : p.getLocation().getNearbyEntitiesByType(Player.class, range, range, range).stream().filter(player -> {
+            var playerTeamList = getTeam(p.getUniqueId());
+
+            return playerTeamList.isEmpty() || !playerTeamList.get(0).getMembers().contains(player.getUniqueId());
+        }).toList()) {
+            if (e == p) continue;
             double distanceTo = p.getLocation().distance(e.getLocation());
             if (distanceTo > maxDistance)
                 continue;
             maxDistance = distanceTo;
-            target = (Player) e;
+            target = e;
         }
         return target;
     }
@@ -332,21 +345,21 @@ public class GameManager implements Restorable {
         }
     }
 
-    private void teleportToRandomLocations() {
+    public void teleportToRandomLocations() {
         List<Location> teleportLocations = new ArrayList<>();
         var world = Bukkit.getWorlds().get(0);
-        teleportLocations.add(new Location(world, -2000, world.getHighestBlockAt(-2000, 2000).getY() + 1, 2000));
-        teleportLocations.add(new Location(world, -667, world.getHighestBlockAt(-667, 2000).getY() + 1, 2000));
-        teleportLocations.add(new Location(world, 667, world.getHighestBlockAt(667, 2000).getY() + 1, 2000));
-        teleportLocations.add(new Location(world, 2000, world.getHighestBlockAt(2000, 2000).getY() + 1, 2000));
-        teleportLocations.add(new Location(world, -2000, world.getHighestBlockAt(-2000, 667).getY() + 1, 667));
-        teleportLocations.add(new Location(world, -2000, world.getHighestBlockAt(-2000, -667).getY() + 1, -667));
-        teleportLocations.add(new Location(world, -2000, world.getHighestBlockAt(-2000, -2000).getY() + 1, -2000));
-        teleportLocations.add(new Location(world, -667, world.getHighestBlockAt(-667, -2000).getY() + 1, -2000));
-        teleportLocations.add(new Location(world, 667, world.getHighestBlockAt(667, -2000).getY() + 1, 2000));
-        teleportLocations.add(new Location(world, 2000, world.getHighestBlockAt(2000, -2000).getY() + 1, -2000));
-        teleportLocations.add(new Location(world, 2000, world.getHighestBlockAt(2000, -667).getY() + 1, -667));
-        teleportLocations.add(new Location(world, 2000, world.getHighestBlockAt(2000, 667).getY() + 1, 667));
+        teleportLocations.add(new Location(world, -2000.5, world.getHighestBlockAt(-2000, 2000).getY() + 1, 2000.5));
+        teleportLocations.add(new Location(world, -666.5, world.getHighestBlockAt(-667, 2000).getY() + 1, 2000.5));
+        teleportLocations.add(new Location(world, 667.5, world.getHighestBlockAt(667, 2000).getY() + 1, 2000.5));
+        teleportLocations.add(new Location(world, 2000.5, world.getHighestBlockAt(2000, 2000).getY() + 1, 2000.5));
+        teleportLocations.add(new Location(world, -2000.5, world.getHighestBlockAt(-2000, 667).getY() + 1, 667.5));
+        teleportLocations.add(new Location(world, -2000.5, world.getHighestBlockAt(-2000, -667).getY() + 1, -667.5));
+        teleportLocations.add(new Location(world, -2000.5, world.getHighestBlockAt(-2000, -2000).getY() + 1, -2000.5));
+        teleportLocations.add(new Location(world, -667.5, world.getHighestBlockAt(-667, -2000).getY() + 1, -2000.5));
+        teleportLocations.add(new Location(world, 667.5, world.getHighestBlockAt(667, -2000).getY() + 1, 2000.5));
+        teleportLocations.add(new Location(world, 2000.5, world.getHighestBlockAt(2000, -2000).getY() + 1, -2000.5));
+        teleportLocations.add(new Location(world, 2000.5, world.getHighestBlockAt(2000, -667).getY() + 1, -667.5));
+        teleportLocations.add(new Location(world, 2000.5, world.getHighestBlockAt(2000, 667).getY() + 1, 667.5));
 
         var survivalPlayers = Bukkit.getOnlinePlayers().stream().filter(player -> player.getGameMode().equals(GameMode.SURVIVAL)).toList();
 

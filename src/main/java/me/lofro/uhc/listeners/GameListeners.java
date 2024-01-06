@@ -203,9 +203,9 @@ public class GameListeners implements Listener {
 
     @EventHandler
     private void onMove(PlayerMoveEvent event) {
+        var gameManager = UHC.getInstance().getGameManager();
         var player = event.getPlayer();
         if (!(event.hasChangedPosition() || event.hasChangedBlock()) || !player.getGameMode().equals(GameMode.SURVIVAL) || player.isDead()) return;
-        var gameManager = UHC.getInstance().getGameManager();
 
         if (gameManager.getGameData().isInGame()) {
             var playersNearby = player.getNearbyEntities(40, 40, 40);
@@ -227,7 +227,7 @@ public class GameListeners implements Listener {
                         Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&aSe ha creado un nuevo team.")));
                     } else { // EVENT PLAYER HAS TEAM
                         var playerTeam = gameManager.getTeam(player.getUniqueId()).get(0);
-                        if (playerTeam.getMembers().size() >= 2) return;
+                        if (playerTeam.getMembers().size() >= 3) return;
                         playerTeam.getMembers().add(nearbyPlayer.getUniqueId());
 
                         playerTeam.getMembers().forEach(member -> {
@@ -258,7 +258,7 @@ public class GameListeners implements Listener {
                 } else { // NEARBY PLAYER HAS TEAM
                     if (teams.stream().noneMatch(team -> team.getMembers().contains(player.getUniqueId()))) { // EVENT PLAYER DOES NOT HAVE TEAM
                         var nearbyPlayerTeam = gameManager.getTeam(nearbyPlayer.getUniqueId()).get(0);
-                        if (nearbyPlayerTeam.getMembers().size() >= 2) return;
+                        if (nearbyPlayerTeam.getMembers().size() >= 3) return;
                         nearbyPlayerTeam.getMembers().add(player.getUniqueId());
 
                         nearbyPlayerTeam.getMembers().forEach(member -> {

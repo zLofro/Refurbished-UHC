@@ -11,8 +11,10 @@ import me.lofro.uhc.api.ListenerUtils;
 import me.lofro.uhc.api.crafting.CraftingRemover;
 import me.lofro.uhc.api.infinitepotion.InfinitePotionEffectListener;
 import me.lofro.uhc.commands.StaffCommand;
+import me.lofro.uhc.commands.TeamCommand;
 import me.lofro.uhc.data.DataManager;
 import me.lofro.uhc.listeners.GameListeners;
+import me.lofro.uhc.listeners.ScatterListeners;
 import me.lofro.uhc.managers.GameManager;
 import me.lofro.uhc.managers.RecipesManager;
 import me.neznamy.tab.api.TabAPI;
@@ -45,11 +47,11 @@ public class UHC extends JavaPlugin {
 
         this.protocolManager = ProtocolLibrary.getProtocolManager();
 
-        ListenerUtils.registerListener(new InfinitePotionEffectListener());
+        ListenerUtils.registerListeners(new InfinitePotionEffectListener(), new ScatterListeners());
 
         this.paperCommandManager = new PaperCommandManager(this);
 
-        CommandUtils.registerCommands(paperCommandManager, new StaffCommand());
+        CommandUtils.registerCommands(paperCommandManager, new StaffCommand(), new TeamCommand());
 
         CraftingRemover.removeRecipeByKey("glistering_melon_slice");
         CraftingRemover.removeRecipeByKey("golden_carrot");
