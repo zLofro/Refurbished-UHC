@@ -17,6 +17,7 @@ public class RecipesManager {
         createGlisteringMelonRecipe();
         createGoldenHeadRecipe();
         createGoldenSkullRecipe();
+        dragonBreathCraft();
     }
 
     private static void createGoldenCarrotRecipe() {
@@ -68,6 +69,18 @@ public class RecipesManager {
         goldenHeadRecipe.setIngredient('H', Material.WITHER_SKELETON_SKULL);
 
         Bukkit.addRecipe(goldenHeadRecipe);
+    }
+
+    private static void dragonBreathCraft() {
+        NamespacedKey dragonBreathKey = new NamespacedKey(UHC.getInstance(), "custom_dragon_breath");
+
+        ShapelessRecipe dragonBreathRecipe = new ShapelessRecipe(dragonBreathKey, new ItemStack(Material.DRAGON_BREATH, 3));
+
+        dragonBreathRecipe.addIngredient(2, Material.GOLD_INGOT);
+        dragonBreathRecipe.addIngredient(Material.GLASS_BOTTLE);
+        dragonBreathRecipe.addIngredient(Material.BLAZE_POWDER);
+
+        Bukkit.addRecipe(dragonBreathRecipe);
     }
 
 }

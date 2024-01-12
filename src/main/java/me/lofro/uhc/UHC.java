@@ -14,7 +14,6 @@ import me.lofro.uhc.commands.StaffCommand;
 import me.lofro.uhc.commands.TeamCommand;
 import me.lofro.uhc.data.DataManager;
 import me.lofro.uhc.listeners.GameListeners;
-import me.lofro.uhc.listeners.ScatterListeners;
 import me.lofro.uhc.managers.GameManager;
 import me.lofro.uhc.managers.RecipesManager;
 import me.neznamy.tab.api.TabAPI;
@@ -47,7 +46,7 @@ public class UHC extends JavaPlugin {
 
         this.protocolManager = ProtocolLibrary.getProtocolManager();
 
-        ListenerUtils.registerListeners(new InfinitePotionEffectListener(), new ScatterListeners());
+        ListenerUtils.registerListeners(new InfinitePotionEffectListener());
 
         this.paperCommandManager = new PaperCommandManager(this);
 

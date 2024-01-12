@@ -19,8 +19,8 @@ import me.neznamy.tab.api.tablist.TabListFormatManager;
 import net.kyori.adventure.title.Title;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scoreboard.*;
 
@@ -97,12 +97,12 @@ public class GameManager implements Restorable {
             var newChapterTime = (chapter != 1) ? (((newTime / 1500F) + 1) - chapter) * 1500 : newTime;
 
             if ((double) (chapter + 1) == getUnRoundedChapter(gameData.getTime() + 6)) {
-                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55Cambio de episodio en:"), HexFormatter.hexFormat("#FFFF555")))), 20);
-                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55Cambio de episodio en:"), HexFormatter.hexFormat("#FFFF554")))), 40);
-                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55Cambio de episodio en:"), HexFormatter.hexFormat("#FFFF553")))), 60);
-                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55Cambio de episodio en:"), HexFormatter.hexFormat("#FFFF552")))), 80);
-                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55Cambio de episodio en:"), HexFormatter.hexFormat("#FFFF551")))), 100);
-                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.showTitle(Title.title(HexFormatter.hexFormat("#FFFF55¡Se cambió el episodio!"), HexFormatter.hexFormat("")))), 100);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormatWithPrefix("#FFFF55Cambio de episodio en 5"))), 20);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormatWithPrefix("#FFFF55Cambio de episodio en 4"))), 40);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormatWithPrefix("#FFFF55Cambio de episodio en 3"))), 60);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormatWithPrefix("#FFFF55Cambio de episodio en 2"))), 80);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormatWithPrefix("#FFFF55Cambio de episodio en 1"))), 100);
+                Bukkit.getScheduler().runTaskLater(UHC.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(HexFormatter.hexFormatWithPrefix("#FFFF55¡Cambio de episodio!"))), 120);
             }
 
             if (chapter > getChapter(gameData.getTime() - 1)) {
@@ -179,7 +179,7 @@ public class GameManager implements Restorable {
                 headerFooterManager.setFooter(tabPlayer, footer);
 
                 var absorption = online.getPotionEffect(PotionEffectType.ABSORPTION);
-                var health = absorption != null ? (int)(online.getHealth() + absorption.getAmplifier() + 4) / 2 : (int)online.getHealth() / 2;
+                var health = absorption != null ? BigDecimal.valueOf((online.getHealth() + absorption.getAmplifier() + 4) / 2).setScale(1, RoundingMode.HALF_EVEN).doubleValue() : BigDecimal.valueOf(online.getHealth() / 2).setScale(1, RoundingMode.HALF_EVEN).doubleValue();
                 tablistFormatManager.setSuffix(tabPlayer, " " + getHealthColor(health) + health + "#EF2A2A❤");
 
                 var teamList = getTeam(online.getUniqueId());
@@ -285,7 +285,7 @@ public class GameManager implements Restorable {
         return builder.toString();
     }
 
-    private String getHealthColor(int health) {
+    private String getHealthColor(double health) {
         if (health >= 18) {
             return "#70E370";
         } else if (health >= 16) {
@@ -348,18 +348,18 @@ public class GameManager implements Restorable {
     public void teleportToRandomLocations() {
         List<Location> teleportLocations = new ArrayList<>();
         var world = Bukkit.getWorlds().get(0);
-        teleportLocations.add(new Location(world, -2000.5, world.getHighestBlockAt(-2000, 2000).getY() + 1, 2000.5));
-        teleportLocations.add(new Location(world, -666.5, world.getHighestBlockAt(-667, 2000).getY() + 1, 2000.5));
-        teleportLocations.add(new Location(world, 667.5, world.getHighestBlockAt(667, 2000).getY() + 1, 2000.5));
-        teleportLocations.add(new Location(world, 2000.5, world.getHighestBlockAt(2000, 2000).getY() + 1, 2000.5));
-        teleportLocations.add(new Location(world, -2000.5, world.getHighestBlockAt(-2000, 667).getY() + 1, 667.5));
-        teleportLocations.add(new Location(world, -2000.5, world.getHighestBlockAt(-2000, -667).getY() + 1, -667.5));
-        teleportLocations.add(new Location(world, -2000.5, world.getHighestBlockAt(-2000, -2000).getY() + 1, -2000.5));
-        teleportLocations.add(new Location(world, -667.5, world.getHighestBlockAt(-667, -2000).getY() + 1, -2000.5));
-        teleportLocations.add(new Location(world, 667.5, world.getHighestBlockAt(667, -2000).getY() + 1, 2000.5));
-        teleportLocations.add(new Location(world, 2000.5, world.getHighestBlockAt(2000, -2000).getY() + 1, -2000.5));
-        teleportLocations.add(new Location(world, 2000.5, world.getHighestBlockAt(2000, -667).getY() + 1, -667.5));
-        teleportLocations.add(new Location(world, 2000.5, world.getHighestBlockAt(2000, 667).getY() + 1, 667.5));
+        teleportLocations.add(new Location(world, -2000.5, world.getMaxHeight(), 2000.5));
+        teleportLocations.add(new Location(world, -666.5, world.getMaxHeight(), 2000.5));
+        teleportLocations.add(new Location(world, 667.5, world.getMaxHeight(), 2000.5));
+        teleportLocations.add(new Location(world, 2000.5, world.getMaxHeight(), 2000.5));
+        teleportLocations.add(new Location(world, -2000.5, world.getMaxHeight(), 667.5));
+        teleportLocations.add(new Location(world, -2000.5, world.getMaxHeight(), -667.5));
+        teleportLocations.add(new Location(world, -2000.5, world.getMaxHeight(), -2000.5));
+        teleportLocations.add(new Location(world, -667.5, world.getMaxHeight(), -2000.5));
+        teleportLocations.add(new Location(world, 667.5, world.getMaxHeight(), 2000.5));
+        teleportLocations.add(new Location(world, 2000.5, world.getMaxHeight(), -2000.5));
+        teleportLocations.add(new Location(world, 2000.5, world.getMaxHeight(), -667.5));
+        teleportLocations.add(new Location(world, 2000.5, world.getMaxHeight(), 667.5));
 
         var survivalPlayers = Bukkit.getOnlinePlayers().stream().filter(player -> player.getGameMode().equals(GameMode.SURVIVAL)).toList();
 
@@ -369,6 +369,7 @@ public class GameManager implements Restorable {
             if (survivalPlayers.size() > teleportLocations.size()) continue;
 
             player.teleport(teleportLocations.get(i));
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 2400, 0));
         }
     }
 

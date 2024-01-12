@@ -8,6 +8,7 @@ import me.lofro.uhc.api.text.ChatColorFormatter;
 import me.lofro.uhc.api.text.HexFormatter;
 import me.lofro.uhc.data.Team;
 import net.kyori.adventure.title.Title;
+import net.minecraft.network.chat.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
@@ -208,7 +209,7 @@ public class GameListeners implements Listener {
         if (!(event.hasChangedPosition() || event.hasChangedBlock()) || !player.getGameMode().equals(GameMode.SURVIVAL) || player.isDead()) return;
 
         if (gameManager.getGameData().isInGame()) {
-            var playersNearby = player.getNearbyEntities(40, 40, 40);
+            var playersNearby = player.getNearbyEntities(10, 10, 10);
 
             playersNearby = playersNearby.stream().filter(entity -> entity instanceof Player p && p.getGameMode().equals(GameMode.SURVIVAL) && !p.isDead()).collect(Collectors.toList());
 
@@ -220,6 +221,7 @@ public class GameListeners implements Listener {
                         List<UUID> newTeamMembers = new ArrayList<>(Arrays.asList(nearbyPlayer.getUniqueId(), player.getUniqueId()));
                         var newTeam = new Team(newTeamMembers);
                         gameManager.getGameData().getTeams().add(newTeam);
+                        newTeam.setTimesJoined(2);
 
                         nearbyPlayer.sendMessage(ChatColorFormatter.stringWithPrefix("&eSe ha creado un nuevo team al que te has unido junto con el jugador " + player.getName() + ". ⚠ Deben de ponerle un nombre con el comando /team rename <Nombre>"));
                         player.sendMessage(ChatColorFormatter.stringWithPrefix("&eSe ha creado un nuevo team al que te has unido junto con el jugador " + nearbyPlayer.getName() + ". ⚠ Deben de ponerle un nombre con el comando /team rename <Nombre>"));
@@ -227,8 +229,9 @@ public class GameListeners implements Listener {
                         Bukkit.getOnlinePlayers().forEach(online -> online.sendMessage(ChatColorFormatter.stringWithPrefix("&aSe ha creado un nuevo team.")));
                     } else { // EVENT PLAYER HAS TEAM
                         var playerTeam = gameManager.getTeam(player.getUniqueId()).get(0);
-                        if (playerTeam.getMembers().size() >= 3) return;
+                        if (playerTeam.getMembers().size() >= 3 || playerTeam.getTimesJoined() >= 3) return;
                         playerTeam.getMembers().add(nearbyPlayer.getUniqueId());
+                        playerTeam.setTimesJoined(playerTeam.getTimesJoined() + 1);
 
                         playerTeam.getMembers().forEach(member -> {
                             var memberPlayer = Bukkit.getPlayer(member);
@@ -258,8 +261,9 @@ public class GameListeners implements Listener {
                 } else { // NEARBY PLAYER HAS TEAM
                     if (teams.stream().noneMatch(team -> team.getMembers().contains(player.getUniqueId()))) { // EVENT PLAYER DOES NOT HAVE TEAM
                         var nearbyPlayerTeam = gameManager.getTeam(nearbyPlayer.getUniqueId()).get(0);
-                        if (nearbyPlayerTeam.getMembers().size() >= 3) return;
+                        if (nearbyPlayerTeam.getMembers().size() >= 3 || nearbyPlayerTeam.getTimesJoined() >= 3) return;
                         nearbyPlayerTeam.getMembers().add(player.getUniqueId());
+                        nearbyPlayerTeam.setTimesJoined(nearbyPlayerTeam.getTimesJoined() + 1);
 
                         nearbyPlayerTeam.getMembers().forEach(member -> {
                             var memberPlayer = Bukkit.getPlayer(member);
@@ -301,7 +305,7 @@ public class GameListeners implements Listener {
 
         var serverPlayer = ((CraftPlayer)event.getPlayer()).getHandle();
         var displayName = serverPlayer.getDisplayName();
-        var modifiedDisplayName = displayName.plainCopy().setStyle(displayName.getStyle().withObfuscated(true));
+        var modifiedDisplayName = Component.literal("abcde").setStyle(displayName.getStyle().withObfuscated(true));
 
         net.kyori.adventure.text.Component message = announceToChat ? io.papermc.paper.adventure.PaperAdventure.asAdventure(net.minecraft.network.chat.Component.translatable("chat.type.advancement." + advancement.getDisplay().getFrame().getName(), modifiedDisplayName, advancement.getChatComponent())) : null;
 

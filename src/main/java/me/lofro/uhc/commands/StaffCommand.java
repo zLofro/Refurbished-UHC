@@ -27,7 +27,7 @@ public class StaffCommand extends BaseCommand {
             var gameManager = UHC.getInstance().getGameManager();
             var teams = gameManager.getGameData().getTeams();
 
-            var newTeam = new Team(teamName, new ArrayList<>(List.of(player.getUniqueId())));
+            var newTeam = new Team(teamName, new ArrayList<>(List.of(player.getUniqueId())), 1);
 
             teams.add(newTeam);
 
